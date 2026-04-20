@@ -35,7 +35,7 @@ footer a{color:#58a6ff;text-decoration:none}
 <div style="background:#161b22;border:2px solid #3fb950;border-radius:14px;padding:24px;text-align:center;margin-bottom:20px">
 <div style="font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:2px">Combined Portfolio (50% Strategy + 50% Spot)</div>
 <div style="font-size:48px;font-weight:800;color:#3fb950;margin:10px 0">+335.8%</div>
-<div style="font-size:16px;color:#c9d1d9">$10,000 &rarr; $43,569 | Sharpe 1.41 | MaxDD -20.9%</div>
+<div style="font-size:16px;color:#c9d1d9">$10,000 &rarr; $43,569 | Ann. +35.0% | Sharpe 1.41 | MaxDD -20.9%</div>
 <div style="font-size:13px;color:#8b949e;margin-top:6px">4.9 years (2021.05 - 2026.04) | BTC same period: +26.0%</div>
 </div>
 
@@ -43,13 +43,13 @@ footer a{color:#58a6ff;text-decoration:none}
 <div style="background:#161b22;border:1px solid #21262d;border-radius:10px;padding:18px;text-align:center">
 <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px">Futures Strategy</div>
 <div style="font-size:32px;font-weight:700;color:#58a6ff;margin:6px 0">+357.8%</div>
-<div style="font-size:12px;color:#c9d1d9">$10K &rarr; $45,784 | Sharpe 1.43</div>
+<div style="font-size:12px;color:#c9d1d9">$10K &rarr; $45,784 | Ann. +36.4% | Sharpe 1.43</div>
 <div style="font-size:12px;color:#f85149;margin-top:4px">MaxDD -17.3%</div>
 </div>
 <div style="background:#161b22;border:1px solid #21262d;border-radius:10px;padding:18px;text-align:center">
 <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:1px">Spot Strategy</div>
 <div style="font-size:32px;font-weight:700;color:#f0883e;margin:6px 0">+313.8%</div>
-<div style="font-size:12px;color:#c9d1d9">$10K &rarr; $41,354 | Cycle Timing + DCA</div>
+<div style="font-size:12px;color:#c9d1d9">$10K &rarr; $41,354 | Ann. +33.6% | Cycle Timing + DCA</div>
 <div style="font-size:12px;color:#f85149;margin-top:4px">MaxDD -23.4%</div>
 </div>
 </div>
@@ -58,22 +58,54 @@ footer a{color:#58a6ff;text-decoration:none}
 <div class="k"><div class="l">BTC Same Period</div><div class="v o">+26.0%</div><div class="s">MaxDD -77%</div></div>
 <div class="k"><div class="l">Trades</div><div class="v">876</div><div class="s">WR 49% | PF 2.3</div></div>
 <div class="k"><div class="l">Avg Expect</div><div class="v g">+1.91%</div><div class="s">per trade</div></div>
-<div class="k"><div class="l">Codex Audited</div><div class="v g">13 bugs</div><div class="s">found & fixed</div></div>
+<div class="k"><div class="l">Sharpe (return/σ)</div><div class="v g">1.41</div><div class="s">risk-adjusted return</div></div>
+<div class="k"><div class="l">Sortino (return/↓σ)</div><div class="v g">1.48</div><div class="s">lowest downside risk</div></div>
 </div>
 
 <h2>Equity Curve</h2>
 <div class="bx"><div id="eq" style="height:420px"></div></div>
 
+<h2>Volatility Comparison — Why Combined is Best</h2>
+<div class="bx">
+<p style="color:#8b949e;font-size:13px;margin-bottom:12px">Standard deviation alone is misleading — Strategy is flat 76% of the time (no position), which artificially deflates its volatility. Active-day metrics and tail risk tell the real story.</p>
+<table>
+<thead><tr><th>Metric</th><th style="color:#3fb950;font-weight:700">Combined</th><th style="color:#58a6ff">Strategy</th><th style="color:#f0883e">Spot</th><th style="color:#d29922">BTC Hold</th></tr></thead>
+<tbody>
+<tr style="background:#111820"><td colspan="5" style="color:#484f58;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;padding:6px 12px">Surface Metrics (misleading for Strategy)</td></tr>
+<tr><td>Daily Volatility (σ)</td><td class="g" style="font-weight:700">1.21%</td><td>1.22%</td><td>1.68%</td><td class="r">2.91%</td></tr>
+<tr><td>Flat Days (|r| &lt; 0.01%)</td><td>21.8%</td><td class="o" style="font-weight:700">75.7%</td><td>27.7%</td><td>0.7%</td></tr>
+<tr style="background:#111820"><td colspan="5" style="color:#484f58;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;padding:6px 12px">True Volatility (active days only)</td></tr>
+<tr><td>Active-Day Volatility</td><td class="g" style="font-weight:700">1.37%</td><td class="r" style="font-weight:700">2.46%</td><td>1.97%</td><td>2.92%</td></tr>
+<tr><td>Downside Deviation</td><td class="g" style="font-weight:700">1.23%</td><td class="r">2.03%</td><td>1.89%</td><td>2.90%</td></tr>
+<tr style="background:#111820"><td colspan="5" style="color:#484f58;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;padding:6px 12px">Tail Risk</td></tr>
+<tr><td>Kurtosis (>3 = fat tails)</td><td class="g">11.2</td><td class="r" style="font-weight:700">73.2</td><td>7.9</td><td>3.4</td></tr>
+<tr><td>Worst Single Day</td><td>-7.08%</td><td class="r">-10.22%</td><td class="r">-12.85%</td><td class="r" style="font-weight:700">-17.15%</td></tr>
+<tr><td>Best Single Day</td><td>+9.82%</td><td class="g" style="font-weight:700">+21.43%</td><td>+10.55%</td><td>+14.04%</td></tr>
+<tr><td>VaR 95% (daily)</td><td>-1.62%</td><td class="g" style="font-weight:700">-0.73%</td><td class="r">-2.32%</td><td class="r">-4.52%</td></tr>
+<tr><td>CVaR 95% (avg beyond VaR)</td><td>-2.74%</td><td>-2.40%</td><td class="r">-4.04%</td><td class="r" style="font-weight:700">-7.01%</td></tr>
+<tr style="background:#111820"><td colspan="5" style="color:#484f58;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;padding:6px 12px">Risk-Adjusted Performance</td></tr>
+<tr><td>Sharpe (return / σ)</td><td class="g">1.41</td><td class="g" style="font-weight:700">1.43</td><td>1.06</td><td class="r">0.36</td></tr>
+<tr><td>Sortino (return / downside σ)</td><td class="g" style="font-weight:700">1.48</td><td>0.93</td><td>0.92</td><td class="r">0.08</td></tr>
+<tr><td>Calmar (return / MaxDD)</td><td>1.73</td><td class="g" style="font-weight:700">2.39</td><td>1.08</td><td class="r">0.06</td></tr>
+<tr><td>Ulcer Index (DD duration)</td><td>6.07</td><td class="g" style="font-weight:700">5.19</td><td>10.04</td><td class="r">41.42</td></tr>
+<tr><td>Total Return</td><td class="g">+335.8%</td><td class="g">+357.8%</td><td class="g">+313.8%</td><td>+26.0%</td></tr>
+</tbody></table>
+<div style="background:#0d1117;border-left:3px solid #3fb950;padding:12px 16px;margin-top:12px;border-radius:0 8px 8px 0">
+<div style="font-size:13px;font-weight:600;color:#3fb950">Why Combined wins</div>
+<div style="font-size:12px;color:#8b949e;margin-top:4px">Strategy looks calm on paper (σ = 1.22%) but is actually the most violent — 76% of days are flat, and when it moves, it moves hard (kurtosis 73.2, active-day vol 2.46%). Combined blends these bursts with Spot's steady returns, cutting downside deviation to 1.23% (lowest) and pushing Sortino to 1.48 (60% higher than Strategy alone). The result: similar total return, genuinely smooth compounding.</div>
+</div>
+</div>
+
 <h2>Yearly Performance</h2>
 <div class="bx"><table>
-<thead><tr><th>Year</th><th style="color:#3fb950">Combined</th><th>MDD</th><th>BTC</th><th style="color:#58a6ff">Strategy</th><th style="color:#f0883e">Spot</th></tr></thead>
+<thead><tr><th>Year</th><th style="color:#3fb950">Combined</th><th>MDD</th><th>BTC</th><th style="color:#58a6ff">Strategy</th><th style="color:#f0883e">Spot</th><th>Sharpe (return/σ)</th><th>Sortino (return/↓σ)</th></tr></thead>
 <tbody>
-<tr><td>2021</td><td class="g" style="font-weight:700">+9.7%</td><td class="r">-14.6%</td><td class="r">-20.2%</td><td>+13.5%</td><td>+5.9%</td></tr>
-<tr><td>2022</td><td class="g" style="font-weight:700">+1.5%</td><td class="r">-14.2%</td><td class="r" style="font-weight:700">-64.3%</td><td>+15.7%</td><td>-2.9%</td></tr>
-<tr><td>2023</td><td class="g" style="font-weight:700">+73.7%</td><td class="r">-8.9%</td><td class="g">+155.9%</td><td>+48.7%</td><td>+86.4%</td></tr>
-<tr><td>2024</td><td class="g" style="font-weight:700">+84.6%</td><td class="r">-16.9%</td><td class="g">+120.2%</td><td>+62.1%</td><td>+107.5%</td></tr>
-<tr><td>2025</td><td class="g" style="font-weight:700">+0.7%</td><td class="r">-20.9%</td><td class="r">-6.4%</td><td>-3.0%</td><td>+3.6%</td></tr>
-<tr><td>2026</td><td class="g" style="font-weight:700">+20.9%</td><td class="r">-4.6%</td><td class="r">-16.9%</td><td>+49.1%</td><td>+0.0%</td></tr>
+<tr><td>2021</td><td class="g" style="font-weight:700">+9.7%</td><td class="r">-14.6%</td><td class="r">-20.2%</td><td>+13.5%</td><td>+5.9%</td><td>0.86</td><td>0.77</td></tr>
+<tr><td>2022</td><td class="g" style="font-weight:700">+1.5%</td><td class="r">-14.2%</td><td class="r" style="font-weight:700">-64.3%</td><td>+15.7%</td><td>-2.9%</td><td>0.17</td><td>0.12</td></tr>
+<tr><td>2023</td><td class="g" style="font-weight:700">+73.7%</td><td class="r">-8.9%</td><td class="g">+155.9%</td><td>+48.7%</td><td>+86.4%</td><td class="g" style="font-weight:700">2.58</td><td class="g" style="font-weight:700">3.27</td></tr>
+<tr><td>2024</td><td class="g" style="font-weight:700">+84.6%</td><td class="r">-16.9%</td><td class="g">+120.2%</td><td>+62.1%</td><td>+107.5%</td><td class="g">2.11</td><td class="g">2.37</td></tr>
+<tr><td>2025</td><td class="g" style="font-weight:700">+0.7%</td><td class="r">-20.9%</td><td class="r">-6.4%</td><td>-3.0%</td><td>+3.6%</td><td>0.17</td><td>0.15</td></tr>
+<tr><td>2026</td><td class="g" style="font-weight:700">+20.9%</td><td class="r">-4.6%</td><td class="r">-16.9%</td><td>+49.1%</td><td>+0.0%</td><td class="g" style="font-weight:700">3.24</td><td class="g" style="font-weight:700">3.63</td></tr>
 </tbody></table></div>
 
 <h2>Sub-Strategies</h2>
@@ -121,6 +153,64 @@ Codex-audited: 10 bugs found and fixed by OpenAI Codex adversarial review
 <strong>Costs:</strong> 0.06% fees + 0.03% slippage<br>
 <strong>Live:</strong> OKX BTC-USDT-SWAP since April 2026
 </p></div>
+
+<h2>Development Log — Problems Solved & Bugs Fixed</h2>
+
+<div class="bx">
+<h3 style="color:#f0883e;font-size:15px;margin-bottom:12px">Codex Adversarial Audit (13 bugs found & fixed)</h3>
+<table>
+<thead><tr><th>#</th><th>Problem</th><th>Fix</th><th>Impact</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="r">Leverage cap overflow — new positions opened before old ones closed, total exposure exceeded 1.0x limit</td><td>Changed execution order to close-before-open, update cur_exposure per fill</td><td>Prevents over-leveraged positions</td></tr>
+<tr><td>2</td><td class="r">1H indicators not time-aligned — used current bar data instead of prior bar, causing look-ahead bias</td><td>Added shift(1) to 1H indicators matching 4H treatment</td><td>Eliminates forward-looking data leak</td></tr>
+<tr><td>3</td><td class="r">Short equity can go negative — no protection against unlimited short losses</td><td>Auto-close short at 90% loss (liquidation guard)</td><td>Prevents negative equity scenarios</td></tr>
+<tr><td>4</td><td class="r">2028 halving missing — HALVINGS list only went to 2024, cycle filter breaks after 28 months</td><td>Added 2028-04-15 to both backtest and live bot HALVINGS</td><td>Strategy continues working post-2026</td></tr>
+<tr><td>5</td><td class="r">No circuit breaker — strategy keeps trading during severe drawdowns</td><td>60-day rolling DD: >15% halves new positions, >25% pauses all trading</td><td>Drawdown self-correction mechanism</td></tr>
+<tr><td>6</td><td class="r">ATR poison from data spikes — single extreme candle inflates ATR for 239 bars</td><td>True Range clipped at 5x rolling median(20) before ATR calculation</td><td>Stops/channel stay sane after flash crashes</td></tr>
+<tr><td>7</td><td class="r">Sharpe ratio divide by zero — crashes when all daily returns are identical</td><td>Added np.std(daily_returns) > 0 guard</td><td>No more crashes on flat periods</td></tr>
+<tr><td>8</td><td class="r">Exposure ratio uses stale value — risk calculated on pre-trade exposure, not post-trade</td><td>Changed to actual_exposure computed after execution</td><td>Accurate leverage tracking</td></tr>
+<tr><td>9</td><td class="r">Short liquidation double-counting — liquidation loss counted in both liquidation event and PV calc</td><td>Separated liquidation from portfolio value calculation</td><td>Correct P&L accounting</td></tr>
+<tr><td>10</td><td class="r">Weekly DCA executing 96x/day — no deduplication, every 15m bar triggers a "weekly" buy</td><td>Added last_dca_date tracking, one buy per calendar week</td><td>Fixes massive spot over-buying bug</td></tr>
+<tr><td>11</td><td class="r">spot_btc_pct estimation incorrect — complex formula gave wrong allocation targets</td><td>Simplified to bottom + quarter condition only</td><td>Correct spot position sizing</td></tr>
+<tr><td>12</td><td class="r">Trade recording threshold too high — 0.0001 BTC minimum missed micro-DCA entries</td><td>Changed threshold to 1e-8</td><td>All spot trades now recorded</td></tr>
+<tr><td>13</td><td class="r">Combo dynamic weight logic error — 70% cap applied incorrectly in non-bottom phases</td><td>Restricted dynamic weight to bottom+quarter scenario only, fixed 50/50 elsewhere</td><td>Accurate combined portfolio allocation</td></tr>
+</tbody></table>
+</div>
+
+<div class="bx">
+<h3 style="color:#58a6ff;font-size:15px;margin-bottom:12px">Live Bot (OKX) Fixes</h3>
+<table>
+<thead><tr><th>#</th><th>Problem</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>14</td><td class="r">SSL timeout missing 4H entry windows — network errors during critical 4H bar cause entire cycle to be skipped</td><td>Added retry_on_network_error decorator (3 retries with exponential backoff) + osc4h_retry flag to re-check on next 15m bar</td></tr>
+<tr><td>15</td><td class="r">algoClOrdId format rejected by OKX API — "al_xxx" prefix not accepted</td><td>Changed to pure numeric timestamp format</td></tr>
+<tr><td>16</td><td class="r">Log format specifier crash — f-string with conditional expression caused ValueError</td><td>Split conditional into separate variable before f-string</td></tr>
+</tbody></table>
+</div>
+
+<div class="bx">
+<h3 style="color:#3fb950;font-size:15px;margin-bottom:12px">Strategy Improvements</h3>
+<table>
+<thead><tr><th>#</th><th>Change</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>17</td><td>Added VC (Volume Candle) filter — trend entries blocked when vol_index ≥ 1.5 (high volume pullback = real selling pressure)</td><td>Filters out false pullback entries during high-volume sell-offs</td></tr>
+<tr><td>18</td><td>Added deviation-based position scaling for 4H oscillation — farther from basis = larger position (1x-2x)</td><td>Better mean reversion sizing, more capital at extreme levels</td></tr>
+<tr><td>19</td><td>Added bottom DCA with quarter formula weighting — weekly buy using (ATH+ATL)/4 price zone for allocation: 5%/2%/1%</td><td>Bottom avg entry $22,769 vs BTC low $15,500. Sharpe improved 1.41→1.51</td></tr>
+<tr><td>20</td><td>Backtest start changed from 2020-01 to 2021-05 — removed 2020 bull run starting from $7K that inflated returns</td><td>Honest performance numbers without survivorship bias from extreme starting point</td></tr>
+<tr><td>21</td><td>Tested & rejected: structural stops (worse than ATR stops), fixed risk sizing (worse than fixed position), bear 100% allocation (worse MaxDD)</td><td>Validated current parameter choices through elimination</td></tr>
+</tbody></table>
+</div>
+
+<div class="bx">
+<h3 style="color:#d29922;font-size:15px;margin-bottom:12px">Website & Display Fixes</h3>
+<table>
+<thead><tr><th>#</th><th>Problem</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td>22</td><td class="r">Missing &lt;/div&gt; tag collapsed entire page layout below KPI section</td><td>Fixed div pairing, all sections render correctly</td></tr>
+<tr><td>23</td><td>Layout restructured: Combined portfolio as hero card on top, Strategy/Spot side-by-side below</td><td>User sees total performance first, sub-strategies as supporting detail</td></tr>
+<tr><td>24</td><td>Yearly table reordered: Combined → MDD → BTC → Strategy → Spot (was Strategy-first)</td><td>Combined column bold green, priority display</td></tr>
+</tbody></table>
+</div>
 
 <footer><p>Rocky Zhou | <a href="https://github.com/yzho-yuzhou-cq/zhouyu-portfolio">GitHub</a> | Updated 2026-04-20</p></footer>
 </div>
