@@ -212,6 +212,50 @@ Codex-audited: 10 bugs found and fixed by OpenAI Codex adversarial review
 </tbody></table>
 </div>
 
+<h2>Research & Experiment Process</h2>
+<p style="color:#8b949e;font-size:13px;margin-bottom:15px">Every parameter in this system was validated through controlled backtests. Rejected ideas are listed alongside accepted ones — showing what doesn't work is as important as showing what does.</p>
+
+<div class="bx">
+<h3 style="color:#3fb950;font-size:15px;margin-bottom:12px">Accepted — Deployed to Live</h3>
+<table>
+<thead><tr><th>#</th><th>Experiment</th><th>What Was Tested</th><th>Result</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="g" style="font-weight:700">VC Filter (Trend)</td><td>Block 15m trend entries when vol_index &ge; 1.5 (high volume = real selling, not healthy pullback)</td><td>Sharpe 1.38 &rarr; 1.39, MaxDD -29% &rarr; -27.2%, +710% vs +667%. Filters out losing trades at volume spikes</td></tr>
+<tr><td>2</td><td class="g" style="font-weight:700">Deviation Scaling (4H Osc)</td><td>Position size scales 1x-3x based on distance from basis. Farther = larger (mean reversion edge is stronger)</td><td>Sharpe 1.38 &rarr; 1.42, +744% vs +667%. 75% of trades at 1.0-1.5x, only 0.2% reach 3x</td></tr>
+<tr><td>3</td><td class="g" style="font-weight:700">Combined Best Config</td><td>VC&lt;1.5 + DevScale 3x stacked together</td><td>Sharpe <span style="font-weight:700">1.43</span>, +790%, MaxDD -27.2%. Both improvements compound, not redundant</td></tr>
+<tr><td>4</td><td class="g" style="font-weight:700">Bottom DCA + Quarter Weighting</td><td>Weekly DCA in bottom phase, allocation weighted by quarter formula: (ATH+ATL)/4. Below quarter=5%, mid=2%, above=1%</td><td>Spot Sharpe 1.41 &rarr; 1.51. Avg entry $22,769 vs BTC low $15,500. Superior to one-time buy</td></tr>
+<tr><td>5</td><td class="g" style="font-weight:700">Spot Halving Cycle Timing</td><td>Compared 4 spot strategies: halving cycle, bulldozer sell, quarter formula, simple DCA</td><td>Halving cycle best: bear=0% BTC avoids -77% crash entirely, bull=100% catches full upside</td></tr>
+<tr><td>6</td><td class="g" style="font-weight:700">VC Data Source Validation</td><td>OKX futures volume vs TradingView display — which matches CryptoPainter's indicator?</td><td>TV uses spot BTC-USDT volume, not futures. Bot must pull spot volume for correct VC calculation</td></tr>
+</tbody></table>
+</div>
+
+<div class="bx">
+<h3 style="color:#f85149;font-size:15px;margin-bottom:12px">Rejected — Tested and Eliminated</h3>
+<table>
+<thead><tr><th>#</th><th>Experiment</th><th>What Was Tested</th><th>Why Rejected</th></tr></thead>
+<tbody>
+<tr><td>7</td><td class="r">Structural Stops</td><td>Replace ATR stop (2.5x/1.25x ATR) with structure stops at u_bot/l_top channel lines</td><td>Stop too close (3.98% &rarr; 1.90%), swept 72% vs 57%, Sharpe 0.31 &rarr; 0.17, MaxDD -11% &rarr; -24%</td></tr>
+<tr><td>8</td><td class="r">Fixed Risk Sizing</td><td>Fix max loss per trade ($7-$20) instead of fixed position size ($209)</td><td>With structural stops, position inflates to 66-85% exposure. ATR stop already loses ~1.22%/trade, acceptable</td></tr>
+<tr><td>9</td><td class="r">VC Filter (4H Osc)</td><td>Apply VC&lt;1.5 filter to 4H oscillation entries</td><td>Sharpe 1.38 &rarr; 1.34 on full sample. Improvement in simplified backtest didn't survive full strategy context</td></tr>
+<tr><td>10</td><td class="r">VC Filter (15m Trend, all variants)</td><td>Tested 4 modes: volume pullback, low-vol pullback, reject bearish volume, require bullish volume</td><td>15m volume too noisy. All variants reduced Sharpe. CryptoPainter himself says "VC works 1H+ only"</td></tr>
+<tr><td>11</td><td class="r">State Transition Protection</td><td>3 schemes for osc4h_s blind zone (u_bot~u_top): skip, clamp stop, ER filter</td><td>All 3 cut more good trades than bad ones. 4-year loss from blind zone is small, not worth fixing</td></tr>
+<tr><td>12</td><td class="r">ER Filter (Short Only)</td><td>Efficiency Ratio &gt; 0.2 gate on osc4h_s shorts only</td><td>Killed 2026 bear shorts (28 trades &rarr; 1), 2026 return +50% &rarr; +35%. ER can't distinguish trending from oscillating well enough</td></tr>
+<tr><td>13</td><td class="r">Bear Phase 100% to Strategy</td><td>When spot is 0% BTC (bear phase), shift all capital to futures strategy</td><td>Worse MaxDD. Concentration risk defeats the purpose of diversification</td></tr>
+<tr><td>14</td><td class="r">Dynamic Allocation</td><td>When spot holds cash, dynamically increase strategy allocation</td><td>Worsened MaxDD. Fixed 50/50 is more robust than dynamic shifting</td></tr>
+</tbody></table>
+</div>
+
+<div class="bx">
+<h3 style="color:#58a6ff;font-size:15px;margin-bottom:12px">Research — Completed, Pending Implementation</h3>
+<table>
+<thead><tr><th>#</th><th>Direction</th><th>Methods Researched</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>15</td><td class="b">Regime Detection</td><td>Efficiency Ratio, Choppiness Index, ADX, 200-day MA, Hurst Exponent, BB Squeeze, HMM</td><td>Goal: replace halving cycle dependency with self-adaptive regime detection. Top 3 candidates: ER, persistence filter, CHOP</td></tr>
+<tr><td>16</td><td class="b">MaxDD Source Analysis</td><td>Traced -29% MaxDD to 2021-01-08~02-10: 15m trend DCA stacked to ~2.8x while BTC was +5.8%</td><td>Structural contradiction: DCA is both the profit engine and the risk source. Accepted tradeoff for Sharpe 1.43</td></tr>
+<tr><td>17</td><td class="b">On-chain Signals</td><td>MVRV ratio as valuation reference, fear/greed index for DCA timing, liquidation data for entry signals</td><td>Researched, not yet backtested. Low priority</td></tr>
+</tbody></table>
+</div>
+
 <footer><p>Rocky Zhou | <a href="https://github.com/yzho-yuzhou-cq/zhouyu-portfolio">GitHub</a> | Updated 2026-04-20</p></footer>
 </div>
 <script>
