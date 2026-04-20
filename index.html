@@ -250,7 +250,7 @@ Codex-audited: 10 bugs found and fixed by OpenAI Codex adversarial review
 <table>
 <thead><tr><th>#</th><th>Direction</th><th>Methods Researched</th><th>Status</th></tr></thead>
 <tbody>
-<tr><td>15</td><td class="b">Regime Detection</td><td>Efficiency Ratio, Choppiness Index, ADX, 200-day MA, Hurst Exponent, BB Squeeze, HMM</td><td>Goal: replace halving cycle dependency with self-adaptive regime detection. Top 3 candidates: ER, persistence filter, CHOP</td></tr>
+<tr><td>15</td><td class="b">Market State Detection (replacing halving cycle)</td><td>Efficiency Ratio, Choppiness Index, ADX, 200-day MA, Hurst Exponent, BB Squeeze, HMM</td><td>Goal: let strategy auto-detect bull/bear from price data, instead of hard-coded "months since halving" schedule. Top 3 candidates: ER, persistence filter, CHOP</td></tr>
 <tr><td>16</td><td class="b">MaxDD Source Analysis</td><td>Traced -29% MaxDD to 2021-01-08~02-10: 15m trend DCA stacked to ~2.8x while BTC was +5.8%</td><td>Structural contradiction: DCA is both the profit engine and the risk source. Accepted tradeoff for Sharpe 1.43</td></tr>
 <tr><td>17</td><td class="b">On-chain Signals</td><td>MVRV ratio as valuation reference, fear/greed index for DCA timing, liquidation data for entry signals</td><td>Researched, not yet backtested. Low priority</td></tr>
 </tbody></table>
