@@ -137,6 +137,14 @@
     <div class="chart-wrap"><canvas id="mvrvChart"></canvas></div>
     <div class="card-title" style="margin-top:12px;">MVRV 日线（近90天）× BTC 价格</div>
     <div class="chart-wrap" style="height:220px;"><canvas id="mvrvDaily"></canvas></div>
+    <div class="card-title" style="margin-top:12px;">STH-RP 牛熊分界线（90天）<span style="font-size:10px;color:#555;cursor:pointer;" onclick="document.getElementById('sth-help').style.display=document.getElementById('sth-help').style.display==='none'?'block':'none'"> ?</span></div>
+    <div id="sth-help" style="display:none;font-size:11px;color:#777;padding:6px 0 8px;line-height:1.5;border-bottom:1px solid #1e2738;margin-bottom:8px;">
+      <strong>STH-RP</strong> = 短期持有者（<155天）平均成本<br>
+      <strong style="color:#2ecc71;">BTC 在 STH-RP 上方</strong> = 新入场者盈利，信心强，形成支撑<br>
+      <strong style="color:#e74c3c;">BTC 跌破 STH-RP</strong> = 新入场者亏损，恐慌卖出，连锁抛压<br>
+      <em style="color:#888;">Murphy："横盘阶段最准的牛熊分界线"</em>
+    </div>
+    <div class="chart-wrap" style="height:220px;"><canvas id="sthChart"></canvas></div>
   </div>
   <div class="card">
     <div class="card-title">五层决策漏斗 <span style="font-size:10px;color:#555;font-weight:normal">（点击🔴🟡🟢切换判断）</span></div>
@@ -221,8 +229,8 @@
     <div class="ind-sub" id="hashrate-trend"></div>
   </div>
   <div class="card ind-card">
-    <div class="ind-label">STH-RP <span style="font-size:9px;color:#555;">手动</span></div>
-    <div style="margin:6px 0;"><input id="sth-rp-input" type="number" placeholder="输入STH-RP价格" style="width:100%;background:#0d1117;border:1px solid #2a3040;color:#fff;padding:6px;border-radius:4px;text-align:center;font-size:16px;" onchange="saveSthRp()"></div>
+    <div class="ind-label">STH-RP 牛熊线</div>
+    <div class="ind-value" id="sth-rp-value">—</div>
     <div class="ind-sub" id="sth-rp-status"></div>
   </div>
   <div class="card ind-card">
@@ -605,6 +613,78 @@ function renderExFlowChart() {
   });
 }
 
+// ── Fetch & Render STH-RP ──
+async function fetchSTHRP() {
+  try {
+    const data = await fetchJSON('https://charts.bgeometrics.com/files/sth_realized_price.json');
+    return data; // [[timestamp_ms, price], ...]
+  } catch { return []; }
+}
+
+function renderSTHChart(sthData, btcPrices) {
+  // Get last 90 days
+  const now = Date.now();
+  const d90 = now - 90 * 86400000;
+  const recent = sthData.filter(d => d[0] >= d90);
+  if (!recent.length) return;
+
+  const labels = recent.map(d => new Date(d[0]).toISOString().slice(5, 10));
+  const sthValues = recent.map(d => d[1]);
+
+  // Align BTC price
+  const btcMap = {};
+  btcPrices.forEach(([ts, price]) => {
+    btcMap[new Date(ts).toISOString().slice(0, 10)] = price;
+  });
+  const btcValues = recent.map(d => {
+    const key = new Date(d[0]).toISOString().slice(0, 10);
+    return btcMap[key] || null;
+  });
+
+  new Chart(document.getElementById('sthChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'BTC Price',
+          data: btcValues,
+          borderColor: '#5dade2',
+          backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 0, pointHoverRadius: 3,
+        },
+        {
+          label: 'STH-RP',
+          data: sthValues,
+          borderColor: '#e74c3c',
+          backgroundColor: 'rgba(231,76,60,0.08)',
+          borderWidth: 2, pointRadius: 0, pointHoverRadius: 3,
+          borderDash: [6, 3], fill: true,
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { ticks: { color: '#555', maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#151a27' } },
+        y: {
+          ticks: { color: '#555', font: { size: 10 }, callback: v => '$' + (v / 1000).toFixed(0) + 'K' },
+          grid: { color: '#151a27' },
+        },
+      },
+      plugins: {
+        legend: { labels: { color: '#aaa', font: { size: 10 }, usePointStyle: true, pointStyle: 'line' } },
+        tooltip: {
+          callbacks: {
+            label: item => `${item.dataset.label}: $${item.parsed.y?.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+          }
+        },
+      }
+    }
+  });
+}
+
 // ── Render Funnel ──
 let layerNewsData = {};
 
@@ -762,33 +842,16 @@ function renderMVRVChart(mvrvData) {
   return { analyses, lastPt };
 }
 
-// ── Manual input (STH-RP, ATS) ──
-function saveSthRp() {
-  const v = document.getElementById('sth-rp-input').value;
-  localStorage.setItem('sth_rp', v);
-  updateSthRpStatus();
-}
+// ── Manual input (ATS only) ──
 function saveAts() {
   const v = document.getElementById('ats-input').value;
   localStorage.setItem('ats_value', v);
   updateAtsStatus();
 }
 function loadManualInputs() {
-  const sthRp = localStorage.getItem('sth_rp');
   const ats = localStorage.getItem('ats_value');
-  if (sthRp) document.getElementById('sth-rp-input').value = sthRp;
   if (ats) document.getElementById('ats-input').value = ats;
-  updateSthRpStatus();
   updateAtsStatus();
-}
-function updateSthRpStatus() {
-  const v = parseFloat(document.getElementById('sth-rp-input').value);
-  const el = document.getElementById('sth-rp-status');
-  const priceEl = document.getElementById('btc-price');
-  const price = parseFloat(priceEl?.textContent?.replace(/[$,]/g,'')) || 0;
-  if (!v || !price) { el.textContent = '从 Glassnode 获取后填入'; return; }
-  if (price > v) { el.innerHTML = `<span class="green">价格在 STH-RP 上方 ✅</span>`; }
-  else { el.innerHTML = `<span class="red">已跌破 STH-RP ⚠️</span>`; }
 }
 function updateAtsStatus() {
   const v = parseFloat(document.getElementById('ats-input').value);
@@ -802,8 +865,8 @@ function updateAtsStatus() {
 // ── Main ──
 async function main() {
   // Parallel fetch
-  const [btcData, fgi, btcDom, goldPrice, mvrvData, btcHistory] = await Promise.all([
-    fetchBTCData(), fetchFearGreed(), fetchBTCDominance(), fetchGold(), fetchMVRV(), fetchBTCHistory(),
+  const [btcData, fgi, btcDom, goldPrice, mvrvData, btcHistory, sthData] = await Promise.all([
+    fetchBTCData(), fetchFearGreed(), fetchBTCDominance(), fetchGold(), fetchMVRV(), fetchBTCHistory(), fetchSTHRP(),
   ]);
   await fetchLocalData();
 
@@ -832,6 +895,19 @@ async function main() {
   // MVRV
   const { lastPt } = renderMVRVChart(mvrvData);
   renderMVRVDaily(mvrvData, btcHistory);
+
+  // STH-RP
+  if (sthData.length) {
+    renderSTHChart(sthData, btcHistory);
+    const latestSth = sthData[sthData.length - 1][1];
+    const btcPrice = btcData?.bitcoin?.usd || 0;
+    document.getElementById('sth-rp-value').textContent = '$' + Math.round(latestSth).toLocaleString();
+    const above = btcPrice > latestSth;
+    document.getElementById('sth-rp-value').className = 'ind-value ' + (above ? 'green' : 'red');
+    document.getElementById('sth-rp-status').innerHTML = above
+      ? `BTC 在 STH-RP 上方 <span style="color:#2ecc71">+$${Math.round(btcPrice - latestSth).toLocaleString()}</span>`
+      : `已跌破 STH-RP <span style="color:#e74c3c">-$${Math.round(latestSth - btcPrice).toLocaleString()}</span>`;
+  }
   const mvrvKeys = Object.keys(mvrvData).sort();
   const latestMVRV = mvrvData[mvrvKeys[mvrvKeys.length - 1]];
   if (latestMVRV) {
