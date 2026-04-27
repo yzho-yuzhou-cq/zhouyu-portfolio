@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>BTC 宏观分析仪表盘</title>
+<!-- Auto-refresh disabled on GitHub Pages; manual refresh with F5 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0e17; color: #e0e0e0;
+    font-family: -apple-system, 'PingFang SC', sans-serif;
+    padding: 16px;
+  }
+  h1 { text-align: center; font-size: 20px; color: #fff; margin-bottom: 4px; }
+  .subtitle { text-align: center; font-size: 12px; color: #555; margin-bottom: 16px; }
+
+  /* Grid layout */
+  .grid { display: grid; gap: 12px; max-width: 1300px; margin: 0 auto; }
+  .grid-top { grid-template-columns: 1fr 320px; }
+  .grid-indicators { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .grid-bottom { grid-template-columns: 1fr 1fr; }
+
+  /* Cards */
+  .card {
+    background: #141926; border-radius: 10px; padding: 14px;
+    border: 1px solid #1e2738;
+  }
+  .card-title {
+    font-size: 13px; color: #888; margin-bottom: 10px;
+    border-bottom: 1px solid #1e2738; padding-bottom: 6px;
+  }
+  .card-title .layer-tag {
+    display: inline-block; font-size: 10px; padding: 2px 6px;
+    border-radius: 3px; margin-left: 6px; vertical-align: middle;
+  }
+
+  /* Funnel */
+  .funnel-layer {
+    display: flex; align-items: center; padding: 8px 10px; margin: 4px 0;
+    border-radius: 6px; font-size: 13px; gap: 10px;
+  }
+  .funnel-num {
+    width: 22px; height: 22px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; font-size: 11px;
+    font-weight: bold; color: #fff; flex-shrink: 0;
+  }
+  .funnel-label { flex: 1; }
+  .funnel-signal { font-size: 12px; font-weight: bold; cursor: pointer; user-select: none; }
+  .funnel-signal:hover { opacity: 0.7; }
+  .funnel-news { margin-top: 6px; padding-left: 32px; }
+  .news-item {
+    font-size: 11px; color: #777; margin: 3px 0; line-height: 1.4;
+    display: flex; gap: 6px;
+  }
+  .news-item a { color: #5dade2; text-decoration: none; }
+  .news-item a:hover { text-decoration: underline; }
+  .news-time { color: #555; white-space: nowrap; flex-shrink: 0; }
+  .news-loading { font-size: 11px; color: #444; padding: 4px 0 4px 32px; }
+  .bearish { background: rgba(231,76,60,0.15); }
+  .bullish { background: rgba(46,204,113,0.15); }
+  .neutral { background: rgba(241,196,15,0.15); }
+
+  /* Indicator cards */
+  .ind-card { text-align: center; }
+  .ind-value { font-size: 28px; font-weight: bold; margin: 6px 0; }
+  .ind-label { font-size: 11px; color: #888; }
+  .ind-sub { font-size: 11px; color: #555; margin-top: 4px; }
+  .red { color: #e74c3c; }
+  .green { color: #2ecc71; }
+  .orange { color: #f39c12; }
+  .blue { color: #3498db; }
+
+  /* Chart */
+  .chart-wrap { position: relative; height: 380px; }
+
+  /* Cycle bar */
+  .cycle-bar {
+    height: 30px; border-radius: 6px; overflow: hidden; display: flex;
+    margin: 8px 0; position: relative;
+  }
+  .cycle-seg {
+    height: 100%; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: rgba(255,255,255,0.8);
+  }
+  .cycle-marker {
+    position: absolute; top: -6px; width: 2px; height: 42px;
+    background: #fff; z-index: 2;
+  }
+  .cycle-marker::after {
+    content: attr(data-label); position: absolute; top: -18px;
+    left: 50%; transform: translateX(-50%); font-size: 10px;
+    color: #f39c12; white-space: nowrap; font-weight: bold;
+  }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid #1e2738; text-align: center; }
+  th { color: #666; font-weight: normal; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+
+  /* Iron rules */
+  .rules { columns: 2; column-gap: 16px; font-size: 12px; color: #888; }
+  .rules p { margin: 4px 0; break-inside: avoid; }
+  .rules strong { color: #ccc; }
+
+  .footer { text-align: center; font-size: 10px; color: #333; margin-top: 20px; }
+
+  #loading { text-align: center; padding: 80px 0; font-size: 16px; color: #666; }
+
+  /* Cycle toggle buttons */
+  .cycle-toggle {
+    font-size: 11px; padding: 3px 10px; border-radius: 12px;
+    border: 1px solid; cursor: pointer; transition: all 0.2s;
+    font-weight: 600;
+  }
+  .cycle-toggle.active { opacity: 1; }
+  .cycle-toggle.inactive { opacity: 0.3; }
+</style>
+</head>
+<body>
+
+<h1>BTC 宏观分析仪表盘</h1>
+<p class="subtitle">腾哥五层漏斗 × Murphy MVRV 周期 · 数据每小时自动刷新</p>
+
+<div id="loading">加载数据中...</div>
+<div id="app" style="display:none;">
+
+<!-- Row 1: MVRV Chart + Five Layer Funnel -->
+<div class="grid grid-top" style="margin-bottom:12px;">
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>MVRV 四轮减半周期叠加</span>
+      <div id="cycle-toggles" style="display:flex;gap:6px;"></div>
+    </div>
+    <div class="chart-wrap"><canvas id="mvrvChart"></canvas></div>
+    <div class="card-title" style="margin-top:12px;">MVRV 日线（近90天）× BTC 价格</div>
+    <div class="chart-wrap" style="height:220px;"><canvas id="mvrvDaily"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">腾哥五层决策漏斗 <span style="font-size:10px;color:#555;font-weight:normal">（点击🔴🟡🟢切换判断）</span></div>
+    <div id="funnel"><div class="news-loading">加载新闻中...</div></div>
+    <div id="funnel-summary" style="margin-top:8px;padding-top:6px;border-top:1px solid #1e2738;"></div>
+    <div id="news-updated" style="font-size:10px;color:#444;margin-top:4px;"></div>
+    <div style="margin-top:12px;">
+      <div class="card-title">减半周期进度</div>
+      <div id="cycle-bar-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 1.5: NUPL + Exchange Flow Charts -->
+<div class="grid grid-bottom" style="margin-bottom:12px;">
+  <div class="card">
+    <div class="card-title">NUPL 未实现盈亏比（90天）<span style="font-size:10px;color:#555;cursor:pointer;" onclick="document.getElementById('nupl-help').style.display=document.getElementById('nupl-help').style.display==='none'?'block':'none'"> ?</span></div>
+    <div id="nupl-help" style="display:none;font-size:11px;color:#777;padding:6px 0 8px;line-height:1.5;border-bottom:1px solid #1e2738;margin-bottom:8px;">
+      <strong>NUPL = 1 - 1/MVRV</strong> = 全网未实现盈亏占比<br>
+      > 0.75 = 极度贪婪（逃顶）· 0.5-0.75 = 牛市警惕<br>
+      0-0.5 = 过渡期 · <strong>< 0 = 多数人亏损（底部投降）</strong><br>
+      <em style="color:#888;">本质：量化"全市场有多少比例的人在亏钱"。亏的人越多→离底部越近</em>
+    </div>
+    <div class="chart-wrap" style="height:220px;"><canvas id="nuplChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">交易所净流入 BTC（30天）<span style="font-size:10px;color:#555;cursor:pointer;" onclick="document.getElementById('flow-help').style.display=document.getElementById('flow-help').style.display==='none'?'block':'none'"> ?</span></div>
+    <div id="flow-help" style="display:none;font-size:11px;color:#777;padding:6px 0 8px;line-height:1.5;border-bottom:1px solid #1e2738;margin-bottom:8px;">
+      <strong style="color:#e74c3c;">红柱（正值）= 币转入交易所 = 准备卖</strong><br>
+      <strong style="color:#2ecc71;">绿柱（负值）= 币转出交易所 = 准备囤</strong><br>
+      <em style="color:#888;">链上数据不会骗人——不管媒体说什么，看钱往哪走。<br>腾哥："花小钱办大事"的链上证据就在这里</em>
+    </div>
+    <div class="chart-wrap" style="height:220px;"><canvas id="exFlowChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Row 2: Key Indicators -->
+<div class="grid grid-indicators" style="margin-bottom:12px;">
+  <div class="card ind-card">
+    <div class="ind-label">BTC 价格</div>
+    <div class="ind-value" id="btc-price">—</div>
+    <div class="ind-sub" id="btc-change"></div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">恐惧贪婪指数</div>
+    <div class="ind-value" id="fgi-value">—</div>
+    <div class="ind-sub" id="fgi-label"></div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">当前 MVRV</div>
+    <div class="ind-value" id="mvrv-now">—</div>
+    <div class="ind-sub" id="mvrv-status"></div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">BTC 市占率</div>
+    <div class="ind-value" id="btc-dom">—</div>
+    <div class="ind-sub">市占率上升 = 风险偏好下降</div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">黄金 XAU/USD</div>
+    <div class="ind-value" id="gold-price">—</div>
+    <div class="ind-sub">黄金暴涨 = 避险预警</div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">距底部窗口</div>
+    <div class="ind-value orange" id="months-to-bottom">—</div>
+    <div class="ind-sub" id="bottom-window"></div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">NUPL</div>
+    <div class="ind-value" id="nupl-now">—</div>
+    <div class="ind-sub" id="nupl-label"></div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">交易所净流入 (7日均)</div>
+    <div class="ind-value" id="exflow-avg">—</div>
+    <div class="ind-sub" id="exflow-label"></div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">算力趋势</div>
+    <div class="ind-value" id="hashrate-now">—</div>
+    <div class="ind-sub" id="hashrate-trend"></div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">STH-RP <span style="font-size:9px;color:#555;">手动</span></div>
+    <div style="margin:6px 0;"><input id="sth-rp-input" type="number" placeholder="输入STH-RP价格" style="width:100%;background:#0d1117;border:1px solid #2a3040;color:#fff;padding:6px;border-radius:4px;text-align:center;font-size:16px;" onchange="saveSthRp()"></div>
+    <div class="ind-sub" id="sth-rp-status"></div>
+  </div>
+  <div class="card ind-card">
+    <div class="ind-label">ATS 累积得分 <span style="font-size:9px;color:#555;">手动</span></div>
+    <div style="margin:6px 0;"><input id="ats-input" type="number" step="0.01" min="0" max="1" placeholder="0-1" style="width:100%;background:#0d1117;border:1px solid #2a3040;color:#fff;padding:6px;border-radius:4px;text-align:center;font-size:16px;" onchange="saveAts()"></div>
+    <div class="ind-sub" id="ats-status"></div>
+  </div>
+</div>
+
+<!-- Row 3: MVRV Table + Rules -->
+<div class="grid grid-bottom">
+  <div class="card">
+    <div class="card-title">MVRV 周期对比</div>
+    <table>
+      <thead><tr><th>周期</th><th>峰值</th><th>峰值月</th><th>MVRV<1 起始</th><th>最低值</th></tr></thead>
+      <tbody id="mvrv-table"></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title" style="cursor:pointer;" onclick="document.getElementById('teach-panel').style.display=document.getElementById('teach-panel').style.display==='none'?'block':'none'">
+      Murphy 指标教学 ▸ <span style="font-size:10px;color:#555;">点击展开</span>
+    </div>
+    <div id="teach-panel" style="display:none;font-size:12px;color:#999;line-height:1.7;">
+      <p style="margin:8px 0;"><strong style="color:#f39c12;">MVRV</strong> = 市值 / 实现价值 = 全市场平均盈利倍数<br>
+      >3 = 平均赚 200%→抛压大→顶 · <1 = 平均亏损→没人卖→底</p>
+      <p style="margin:8px 0;"><strong style="color:#9b59b6;">NUPL</strong> = 1-1/MVRV = 全网未实现盈亏占比<br>
+      >0.75 极度贪婪 · <0 多数人亏损（投降底部）</p>
+      <p style="margin:8px 0;"><strong style="color:#e74c3c;">STH-RP</strong> = 短期持有者（<155天）平均成本<br>
+      价格在线上=新人赚钱→支撑 · 跌破=新人亏损→连锁抛压<br>
+      <em>Murphy："横盘阶段最准的牛熊分界线"</em></p>
+      <p style="margin:8px 0;"><strong style="color:#2ecc71;">Exchange Flow</strong> = 币进出交易所的净量<br>
+      净流入（红）=准备卖 · 净流出（绿）=准备囤<br>
+      <em>链上数据不骗人，不管叙事说什么，看钱往哪走</em></p>
+      <p style="margin:8px 0;"><strong style="color:#3498db;">ATS</strong> = 各钱包群体30天持仓变化，大户权重高<br>
+      接近1=大户在积累 · 接近0=大户在派发<br>
+      <em>腾哥问"主力在干嘛"——ATS 就是量化答案</em></p>
+      <hr style="border-color:#1e2738;margin:12px 0;">
+      <p style="color:#777;"><strong>指标关系链：</strong><br>
+      MVRV/NUPL(大周期定位) → STH-RP(中周期转折) → ExFlow+ATS(微观验证)</p>
+    </div>
+    <div class="card-title" style="margin-top:8px;">腾哥十条铁律</div>
+    <div class="rules">
+      <p><strong>1.</strong> 盈亏同源</p>
+      <p><strong>2.</strong> 不赌减半周期失灵</p>
+      <p><strong>3.</strong> 降息就是出货</p>
+      <p><strong>4.</strong> 连续对再投</p>
+      <p><strong>5.</strong> 复利=不大额亏损</p>
+      <p><strong>6.</strong> 不碰合约杠杆</p>
+      <p><strong>7.</strong> 大波段不做小短线</p>
+      <p><strong>8.</strong> 确定性出来就没了</p>
+      <p><strong>9.</strong> 恐买贪卖(看1-59/60秒)</p>
+      <p><strong>10.</strong> 战争=加息</p>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<p class="footer" id="footer"></p>
+
+<script>
+// ── Config ──
+const HALVINGS = {
+  '2012': { date: new Date('2012-11-28'), color: '#2ecc71' },
+  '2016': { date: new Date('2016-07-09'), color: '#3498db' },
+  '2020': { date: new Date('2020-05-11'), color: '#e74c3c' },
+  '2024': { date: new Date('2024-04-20'), color: '#f39c12' },
+};
+const MONTHS_AFTER = 40;
+
+// ── Five Layer Funnel ──
+const LAYER_KEYWORDS = {
+  1: { label: '地缘政治 / 战争', keys: ['war','conflict','trump','tariff','sanctions','military','missile','iran','israel','geopoliti','nato','peace','ceasefire','invasion','troops','nuclear','strait','attack','defense','armed'] },
+  2: { label: '美联储 / 央行', keys: ['fed','federal reserve','interest rate','boj','bank of japan','ecb','rate cut','rate hike','powell','inflation','cpi','fomc','monetary','central bank','warsh','hawkish','dovish','tightening','basis point'] },
+  3: { label: '全球流动性', keys: ['liquidity','m2','quantitative','balance sheet','dollar','dxy','treasury','yield','bond','credit','debt','reserve','forex','currency','yen','sofr'] },
+  4: { label: '减半周期', keys: ['halving','halvening','cycle','miner','mining','hash rate','block reward','difficulty','on-chain','mvrv','nupl','realized'] },
+  5: { label: '情绪 / 技术面', keys: ['etf','fear','greed','sentiment','fomo','whale','institutional','rally','crash','dump','pump','bearish','bullish','inflow','outflow','liquidat','dominance','rsi','macd','support','resistance'] },
+};
+
+// Signal state saved to localStorage
+const SIGNAL_STATES = ['bearish','neutral','bullish'];
+const SIGNAL_DISPLAY = { bearish: {emoji:'🔴',text:'偏空',bg:'#e74c3c'}, neutral: {emoji:'🟡',text:'中性',bg:'#f1c40f'}, bullish: {emoji:'🟢',text:'偏多',bg:'#27ae60'} };
+
+function getLayerSignal(num) {
+  return localStorage.getItem(`funnel_layer_${num}`) || 'bearish';
+}
+function setLayerSignal(num, sig) {
+  localStorage.setItem(`funnel_layer_${num}`, sig);
+}
+function cycleSignal(num) {
+  const cur = getLayerSignal(num);
+  const idx = SIGNAL_STATES.indexOf(cur);
+  const next = SIGNAL_STATES[(idx + 1) % 3];
+  setLayerSignal(num, next);
+  renderFunnelUI();
+}
+
+// ── API Fetchers ──
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  return r.json();
+}
+
+async function fetchBTCData() {
+  try {
+    const data = await fetchJSON('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,tether-gold&vs_currencies=usd&include_24hr_change=true&include_market_cap=true');
+    return data;
+  } catch { return null; }
+}
+
+async function fetchFearGreed() {
+  try {
+    const data = await fetchJSON('https://api.alternative.me/fng/?limit=1');
+    return data.data?.[0];
+  } catch { return null; }
+}
+
+async function fetchBTCDominance() {
+  try {
+    const data = await fetchJSON('https://api.coingecko.com/api/v3/global');
+    return data.data?.market_cap_percentage?.btc;
+  } catch { return null; }
+}
+
+async function fetchGold() {
+  try {
+    // Use CoinGecko's tether-gold as proxy
+    const data = await fetchJSON('https://api.coingecko.com/api/v3/simple/price?ids=tether-gold&vs_currencies=usd');
+    return data['tether-gold']?.usd;
+  } catch { return null; }
+}
+
+async function fetchMVRV() {
+  const allData = {};
+  const baseURL = 'https://community-api.coinmetrics.io/v4/timeseries/asset-metrics';
+  for (let y = 2012; y <= new Date().getFullYear(); y++) {
+    try {
+      const data = await fetchJSON(`${baseURL}?assets=btc&metrics=CapMVRVCur&frequency=1d&start_time=${y}-01-01&end_time=${y}-12-31&page_size=10000`);
+      (data.data || []).forEach(r => { allData[r.time.slice(0, 10)] = parseFloat(r.CapMVRVCur); });
+    } catch {}
+  }
+  return allData;
+}
+
+// ── Helpers ──
+function extractCycle(data, hDate) {
+  const end = new Date(hDate); end.setDate(end.getDate() + MONTHS_AFTER * 30.44);
+  const now = new Date(); const pts = [];
+  let d = new Date(hDate);
+  while (d <= end && d <= now) {
+    const k = d.toISOString().slice(0, 10);
+    if (data[k] !== undefined) pts.push({ x: (d - hDate) / 86400000 / 30.44, y: data[k] });
+    d.setDate(d.getDate() + 1);
+  }
+  return pts;
+}
+
+function analyzeCycle(pts) {
+  if (!pts.length) return {};
+  let maxV=-Infinity, maxM=0, minV=Infinity, minM=0, b1s=null, b1e=null;
+  pts.forEach(p => {
+    if (p.y > maxV) { maxV=p.y; maxM=p.x; }
+    if (p.y < minV) { minV=p.y; minM=p.x; }
+    if (p.y < 1) { if (b1s===null) b1s=p.x; b1e=p.x; }
+  });
+  return { maxV, maxM, minV, minM, b1s, b1e };
+}
+
+// ── BTC Price History (for daily chart) ──
+async function fetchBTCHistory() {
+  try {
+    const data = await fetchJSON('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=90&interval=daily');
+    return data.prices || [];  // [[timestamp, price], ...]
+  } catch { return []; }
+}
+
+// ── Render MVRV Daily Chart ──
+function renderMVRVDaily(mvrvData, btcPrices) {
+  // Get last 90 days of MVRV
+  const keys = Object.keys(mvrvData).sort().slice(-90);
+  const mvrvPoints = keys.map(k => ({ x: k, y: mvrvData[k] }));
+
+  // Align BTC prices to same dates
+  const btcMap = {};
+  btcPrices.forEach(([ts, price]) => {
+    const d = new Date(ts).toISOString().slice(0, 10);
+    btcMap[d] = price;
+  });
+  const btcPoints = keys.map(k => ({ x: k, y: btcMap[k] || null })).filter(p => p.y !== null);
+
+  new Chart(document.getElementById('mvrvDaily'), {
+    type: 'line',
+    data: {
+      labels: keys.map(k => k.slice(5)),  // "MM-DD"
+      datasets: [
+        {
+          label: 'MVRV',
+          data: mvrvPoints.map(p => p.y),
+          borderColor: '#f39c12',
+          backgroundColor: 'rgba(243,156,18,0.1)',
+          borderWidth: 2, pointRadius: 0, pointHoverRadius: 3,
+          fill: true, yAxisID: 'y',
+        },
+        {
+          label: 'BTC ($)',
+          data: keys.map(k => btcMap[k] || null),
+          borderColor: '#5dade2',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 3,
+          borderDash: [4, 2], yAxisID: 'y1',
+        },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { ticks: { color: '#555', maxTicksLimit: 10, font: { size: 10 } }, grid: { color: '#151a27' } },
+        y: {
+          position: 'left', title: { display: true, text: 'MVRV', color: '#f39c12', font: { size: 10 } },
+          ticks: { color: '#f39c12', font: { size: 10 } }, grid: { color: '#151a27' },
+        },
+        y1: {
+          position: 'right', title: { display: true, text: 'BTC $', color: '#5dade2', font: { size: 10 } },
+          ticks: { color: '#5dade2', font: { size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'K' },
+          grid: { display: false },
+        },
+      },
+      plugins: {
+        legend: { labels: { color: '#aaa', font: { size: 10 }, usePointStyle: true, pointStyle: 'line' } },
+        tooltip: {
+          callbacks: {
+            label: item => item.dataset.label === 'BTC ($)'
+              ? `BTC: $${item.parsed.y?.toLocaleString()}`
+              : `MVRV: ${item.parsed.y?.toFixed(3)}`,
+          }
+        },
+        annotation: {
+          annotations: {
+            mvrv1daily: { type: 'line', yMin: 1, yMax: 1, yScaleID: 'y',
+              borderColor: 'rgba(46,204,113,0.4)', borderWidth: 1.5, borderDash: [6, 4],
+              label: { display: true, content: 'MVRV=1', position: 'start', color: '#2ecc71', font: { size: 9 } }
+            },
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── On-chain data (direct API fetch for GitHub Pages) ──
+let localData = { onchain: {} };
+
+async function fetchOnchainDirect() {
+  const CM = 'https://community-api.coinmetrics.io/v4/timeseries/asset-metrics';
+  const now = new Date();
+  const d90 = new Date(now - 90*86400000).toISOString().slice(0,10);
+  const d30 = new Date(now - 30*86400000).toISOString().slice(0,10);
+  const end = now.toISOString().slice(0,10);
+
+  try {
+    const [mvrvResp, flowResp, hrResp] = await Promise.all([
+      fetchJSON(`${CM}?assets=btc&metrics=CapMVRVCur,PriceUSD&frequency=1d&start_time=${d90}&end_time=${end}&page_size=10000`),
+      fetchJSON(`${CM}?assets=btc&metrics=FlowInExNtv,FlowOutExNtv&frequency=1d&start_time=${d30}&end_time=${end}&page_size=10000`),
+      fetchJSON(`${CM}?assets=btc&metrics=HashRate&frequency=1d&start_time=${d30}&end_time=${end}&page_size=10000`),
+    ]);
+
+    const mvrv_90d=[], nupl_90d=[], price_90d=[];
+    (mvrvResp.data||[]).forEach(r => {
+      const date=r.time.slice(0,10), mv=parseFloat(r.CapMVRVCur||0), pv=parseFloat(r.PriceUSD||0);
+      if(mv>0){mvrv_90d.push({date,value:mv}); nupl_90d.push({date,value:1-1/mv});}
+      if(pv>0) price_90d.push({date,value:pv});
+    });
+
+    const exchange_flow_30d=[];
+    (flowResp.data||[]).forEach(r => {
+      const inf=parseFloat(r.FlowInExNtv||0), out=parseFloat(r.FlowOutExNtv||0);
+      exchange_flow_30d.push({date:r.time.slice(0,10), inflow:inf, outflow:out, net:inf-out});
+    });
+
+    const hashrate_30d=[];
+    (hrResp.data||[]).forEach(r => {
+      const v=parseFloat(r.HashRate||0);
+      if(v>0) hashrate_30d.push({date:r.time.slice(0,10), value:v/1e18});
+    });
+
+    localData.onchain = { mvrv_90d, nupl_90d, price_90d, exchange_flow_30d, hashrate_30d };
+  } catch(e) { console.warn('On-chain fetch failed:', e); }
+}
+
+// Try data.json first (local), fallback to direct API
+async function fetchLocalData() {
+  try {
+    const d = await fetchJSON('data.json');
+    localData = d;
+    return d;
+  } catch {
+    await fetchOnchainDirect();
+    return localData;
+  }
+}
+
+function getLocalNews() {
+  if (!localData?.news) return { layers: {}, updated: null };
+  const result = {};
+  for (const [layer, items] of Object.entries(localData.news)) {
+    result[layer] = items.map(i => ({ title: i.title, link: i.link, date: new Date(i.pubDate) }));
+  }
+  return { layers: result, updated: localData.updated };
+}
+
+function timeSince(date) {
+  if (!date || isNaN(date)) return '';
+  const h = Math.floor((Date.now() - date) / 3600000);
+  if (h < 1) return '刚刚';
+  if (h < 24) return `${h}h前`;
+  return `${Math.floor(h / 24)}d前`;
+}
+
+// ── Render NUPL Chart ──
+function renderNUPLChart() {
+  const nupl = localData?.onchain?.nupl_90d || [];
+  if (!nupl.length) return;
+  new Chart(document.getElementById('nuplChart'), {
+    type: 'line',
+    data: {
+      labels: nupl.map(d => d.date.slice(5)),
+      datasets: [{
+        label: 'NUPL', data: nupl.map(d => d.value),
+        borderColor: '#9b59b6', backgroundColor: 'rgba(155,89,182,0.1)',
+        borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, fill: true,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { ticks: { color:'#555', maxTicksLimit:10, font:{size:10} }, grid:{color:'#151a27'} },
+        y: { ticks: { color:'#555', font:{size:10} }, grid:{color:'#151a27'}, min: -0.2, max: 0.8 },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: i => `NUPL: ${i.parsed.y?.toFixed(4)}` } },
+        annotation: {
+          annotations: {
+            euphoria: { type:'box', yMin:0.75, yMax:1, backgroundColor:'rgba(231,76,60,0.1)', borderWidth:0, label:{display:true,content:'极度贪婪',position:'start',color:'#e74c3c',font:{size:9}} },
+            belief: { type:'box', yMin:0.5, yMax:0.75, backgroundColor:'rgba(243,156,18,0.06)', borderWidth:0 },
+            hope: { type:'box', yMin:0, yMax:0.5, backgroundColor:'rgba(241,196,15,0.04)', borderWidth:0 },
+            capitul: { type:'box', yMin:-0.5, yMax:0, backgroundColor:'rgba(46,204,113,0.08)', borderWidth:0, label:{display:true,content:'投降（底部）',position:'start',color:'#2ecc71',font:{size:9}} },
+            zero: { type:'line', yMin:0, yMax:0, borderColor:'rgba(255,255,255,0.2)', borderWidth:1, borderDash:[4,4] },
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── Render Exchange Flow Chart ──
+function renderExFlowChart() {
+  const flow = localData?.onchain?.exchange_flow_30d || [];
+  if (!flow.length) return;
+  new Chart(document.getElementById('exFlowChart'), {
+    type: 'bar',
+    data: {
+      labels: flow.map(d => d.date.slice(5)),
+      datasets: [{
+        label: '交易所净流入 (BTC)',
+        data: flow.map(d => d.net),
+        backgroundColor: flow.map(d => d.net > 0 ? 'rgba(231,76,60,0.6)' : 'rgba(46,204,113,0.6)'),
+        borderColor: flow.map(d => d.net > 0 ? '#e74c3c' : '#2ecc71'),
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color:'#555', maxTicksLimit:10, font:{size:10} }, grid:{color:'#151a27'} },
+        y: { ticks: { color:'#555', font:{size:10}, callback: v => v.toLocaleString() }, grid:{color:'#151a27'} },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: i => {
+            const d = flow[i.dataIndex];
+            return [`净流入: ${d.net.toLocaleString()} BTC`, `流入: ${d.inflow.toLocaleString()}`, `流出: ${d.outflow.toLocaleString()}`];
+          }
+        }},
+        annotation: { annotations: {
+          zero: { type:'line', yMin:0, yMax:0, borderColor:'rgba(255,255,255,0.2)', borderWidth:1 }
+        }}
+      }
+    }
+  });
+}
+
+// ── Render Funnel ──
+let layerNewsData = {};
+
+function renderFunnelUI() {
+  const el = document.getElementById('funnel');
+  el.innerHTML = '';
+
+  for (let num = 1; num <= 5; num++) {
+    const sig = getLayerSignal(num);
+    const display = SIGNAL_DISPLAY[sig];
+    const cfg = LAYER_KEYWORDS[num];
+    const news = layerNewsData[num] || [];
+
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div class="funnel-layer ${sig}">
+        <span class="funnel-num" style="background:${display.bg}">${num}</span>
+        <span class="funnel-label">
+          <div style="font-weight:600">${cfg.label}</div>
+          <div style="font-size:11px;color:#888;margin-top:2px">${news.length ? news.length + ' 条相关新闻' : '暂无新闻'}</div>
+        </span>
+        <span class="funnel-signal" onclick="cycleSignal(${num})" title="点击切换判断">${display.emoji} ${display.text}</span>
+      </div>
+      <div class="funnel-news">
+        ${news.slice(0, 3).map(n => `
+          <div class="news-item">
+            <span class="news-time">${timeSince(n.date)}</span>
+            <a href="${n.link}" target="_blank">${n.title}</a>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    el.appendChild(div);
+  }
+
+  // Summary
+  const counts = { bearish: 0, neutral: 0, bullish: 0 };
+  for (let i = 1; i <= 5; i++) counts[getLayerSignal(i)]++;
+  const summary = document.getElementById('funnel-summary');
+  if (summary) {
+    summary.innerHTML = `<span style="font-size:12px;color:#888;">综合：🔴×${counts.bearish} 🟡×${counts.neutral} 🟢×${counts.bullish}${counts.bearish >= 3 ? ' → <strong style="color:#e74c3c">偏空</strong>' : counts.bullish >= 3 ? ' → <strong style="color:#2ecc71">偏多</strong>' : ' → <strong style="color:#f1c40f">观望</strong>'}</span>`;
+  }
+}
+
+function renderCycleBar() {
+  const container = document.getElementById('cycle-bar-container');
+  const monthsSince = (new Date() - HALVINGS['2024'].date) / (86400000 * 30.44);
+  const pct = (monthsSince / 48) * 100;
+
+  const phases = [
+    { name: '护身符', end: 12, color: '#27ae60' },
+    { name: '黑天鹅窗口', end: 17, color: '#f39c12' },
+    { name: '灰犀牛', end: 30, color: '#e74c3c' },
+    { name: '筑底', end: 48, color: '#2ecc71' },
+  ];
+
+  let html = '<div class="cycle-bar">';
+  let prev = 0;
+  phases.forEach(p => {
+    const w = ((p.end - prev) / 48) * 100;
+    html += `<div class="cycle-seg" style="width:${w}%;background:${p.color};opacity:0.6">${p.name}</div>`;
+    prev = p.end;
+  });
+  html += `<div class="cycle-marker" style="left:${Math.min(pct, 100)}%" data-label="← 第${monthsSince.toFixed(1)}月"></div>`;
+  html += '</div>';
+  html += `<div style="font-size:11px;color:#888;margin-top:4px;">当前处于<strong style="color:#e74c3c">灰犀牛</strong>阶段 · 腾哥："主跌浪才刚开始"</div>`;
+  container.innerHTML = html;
+}
+
+let mvrvChartInstance = null;
+
+function renderMVRVChart(mvrvData) {
+  const datasets = [];
+  const analyses = {};
+  const labels = ['2012','2016','2020','2024'];
+  const names = ['2012 减半','2016 减半','2020 减半','2024（当前）'];
+
+  labels.forEach((k, i) => {
+    const pts = extractCycle(mvrvData, HALVINGS[k].date);
+    analyses[k] = analyzeCycle(pts);
+    datasets.push({
+      label: names[i], data: pts,
+      borderColor: HALVINGS[k].color, backgroundColor: 'transparent',
+      borderWidth: k === '2024' ? 3 : 1.5, pointRadius: 0, pointHoverRadius: 3, tension: 0.1,
+    });
+  });
+
+  const lastPt = analyses['2024'].maxV ? (extractCycle(mvrvData, HALVINGS['2024'].date).slice(-1)[0] || {}) : {};
+
+  // Toggle buttons
+  const toggleContainer = document.getElementById('cycle-toggles');
+  toggleContainer.innerHTML = '';
+  labels.forEach((k, i) => {
+    const btn = document.createElement('span');
+    btn.className = 'cycle-toggle active';
+    btn.style.borderColor = HALVINGS[k].color;
+    btn.style.color = HALVINGS[k].color;
+    btn.style.backgroundColor = HALVINGS[k].color + '22';
+    btn.textContent = k;
+    btn.dataset.index = i;
+    btn.onclick = () => {
+      const ds = mvrvChartInstance.data.datasets[i];
+      ds.hidden = !ds.hidden;
+      btn.className = ds.hidden ? 'cycle-toggle inactive' : 'cycle-toggle active';
+      btn.style.backgroundColor = ds.hidden ? 'transparent' : HALVINGS[k].color + '22';
+      mvrvChartInstance.update();
+    };
+    toggleContainer.appendChild(btn);
+  });
+
+  mvrvChartInstance = new Chart(document.getElementById('mvrvChart'), {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { type:'linear', min:0, max:MONTHS_AFTER, title:{display:true,text:'减半后月数',color:'#666'},
+             ticks:{color:'#555',stepSize:3}, grid:{color:'#151a27'} },
+        y: { title:{display:true,text:'MVRV',color:'#666'}, min:0,
+             ticks:{color:'#555'}, grid:{color:'#151a27'} },
+      },
+      plugins: {
+        legend: { labels: { color:'#aaa', usePointStyle:true, pointStyle:'line', font:{size:11} } },
+        tooltip: {
+          callbacks: {
+            title: items => `第 ${items[0].parsed.x.toFixed(1)} 个月`,
+            label: item => `${item.dataset.label}: ${item.parsed.y.toFixed(3)}`,
+          }
+        },
+        annotation: {
+          annotations: {
+            line1: { type:'line', yMin:1, yMax:1, borderColor:'rgba(255,255,255,0.2)', borderWidth:1.5, borderDash:[6,4] },
+            line3: { type:'line', yMin:3, yMax:3, borderColor:'rgba(255,255,255,0.1)', borderWidth:1, borderDash:[4,4] },
+            zone: { type:'box', xMin:29, xMax:33, yMin:0, backgroundColor:'rgba(46,204,113,0.06)', borderColor:'rgba(46,204,113,0.2)', borderWidth:1 },
+            now: { type:'line', xMin:lastPt.x||0, xMax:lastPt.x||0, borderColor:'rgba(243,156,18,0.4)', borderWidth:1, borderDash:[3,3] },
+          }
+        }
+      }
+    }
+  });
+
+  // MVRV table
+  const tbody = document.getElementById('mvrv-table');
+  labels.forEach((k, i) => {
+    const a = analyses[k];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><span class="dot" style="background:${HALVINGS[k].color}"></span>${names[i]}</td>
+      <td>${a.maxV?.toFixed(2)||'—'}</td><td>${a.maxM?.toFixed(1)||'—'}</td>
+      <td>${a.b1s !== null ? `第${a.b1s.toFixed(0)}月` : (k==='2024'?'<span class="orange">尚未</span>':'—')}</td>
+      <td>${a.minV?.toFixed(2)||'—'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  return { analyses, lastPt };
+}
+
+// ── Manual input (STH-RP, ATS) ──
+function saveSthRp() {
+  const v = document.getElementById('sth-rp-input').value;
+  localStorage.setItem('sth_rp', v);
+  updateSthRpStatus();
+}
+function saveAts() {
+  const v = document.getElementById('ats-input').value;
+  localStorage.setItem('ats_value', v);
+  updateAtsStatus();
+}
+function loadManualInputs() {
+  const sthRp = localStorage.getItem('sth_rp');
+  const ats = localStorage.getItem('ats_value');
+  if (sthRp) document.getElementById('sth-rp-input').value = sthRp;
+  if (ats) document.getElementById('ats-input').value = ats;
+  updateSthRpStatus();
+  updateAtsStatus();
+}
+function updateSthRpStatus() {
+  const v = parseFloat(document.getElementById('sth-rp-input').value);
+  const el = document.getElementById('sth-rp-status');
+  const priceEl = document.getElementById('btc-price');
+  const price = parseFloat(priceEl?.textContent?.replace(/[$,]/g,'')) || 0;
+  if (!v || !price) { el.textContent = '从 Glassnode 获取后填入'; return; }
+  if (price > v) { el.innerHTML = `<span class="green">价格在 STH-RP 上方 ✅</span>`; }
+  else { el.innerHTML = `<span class="red">已跌破 STH-RP ⚠️</span>`; }
+}
+function updateAtsStatus() {
+  const v = parseFloat(document.getElementById('ats-input').value);
+  const el = document.getElementById('ats-status');
+  if (isNaN(v)) { el.textContent = '从 Glassnode 获取后填入'; return; }
+  if (v >= 0.7) { el.innerHTML = `<span class="green">大户积极累积</span>`; }
+  else if (v >= 0.4) { el.innerHTML = `<span class="orange">观望中</span>`; }
+  else { el.innerHTML = `<span class="red">大户在派发 ⚠️</span>`; }
+}
+
+// ── Main ──
+async function main() {
+  // Parallel fetch
+  const [btcData, fgi, btcDom, goldPrice, mvrvData, btcHistory] = await Promise.all([
+    fetchBTCData(), fetchFearGreed(), fetchBTCDominance(), fetchGold(), fetchMVRV(), fetchBTCHistory(),
+  ]);
+  await fetchLocalData();
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  // BTC Price
+  if (btcData?.bitcoin) {
+    const p = btcData.bitcoin;
+    document.getElementById('btc-price').textContent = `$${Math.round(p.usd).toLocaleString()}`;
+    const ch = p.usd_24h_change;
+    const chEl = document.getElementById('btc-change');
+    chEl.textContent = `24h: ${ch > 0 ? '+' : ''}${ch?.toFixed(2)}%`;
+    chEl.className = 'ind-sub ' + (ch > 0 ? 'green' : 'red');
+  }
+
+  // Fear & Greed
+  if (fgi) {
+    const v = parseInt(fgi.value);
+    document.getElementById('fgi-value').textContent = v;
+    document.getElementById('fgi-value').className = 'ind-value ' + (v <= 25 ? 'green' : v >= 75 ? 'red' : 'orange');
+    document.getElementById('fgi-label').textContent = fgi.value_classification +
+      (v <= 25 ? ' · 腾哥：鬼故事=恐投？' : v >= 75 ? ' · 腾哥：FOMO=逃顶' : '');
+  }
+
+  // MVRV
+  const { lastPt } = renderMVRVChart(mvrvData);
+  renderMVRVDaily(mvrvData, btcHistory);
+  const mvrvKeys = Object.keys(mvrvData).sort();
+  const latestMVRV = mvrvData[mvrvKeys[mvrvKeys.length - 1]];
+  if (latestMVRV) {
+    document.getElementById('mvrv-now').textContent = latestMVRV.toFixed(3);
+    document.getElementById('mvrv-now').className = 'ind-value ' + (latestMVRV < 1 ? 'green' : latestMVRV < 1.5 ? 'orange' : 'red');
+    document.getElementById('mvrv-status').textContent = latestMVRV < 1 ? '底部区间!' : latestMVRV < 1.5 ? '下降中，接近底部' : '仍在高位';
+  }
+
+  // BTC Dominance
+  if (btcDom) {
+    document.getElementById('btc-dom').textContent = btcDom.toFixed(1) + '%';
+    document.getElementById('btc-dom').className = 'ind-value ' + (btcDom > 60 ? 'orange' : 'blue');
+  }
+
+  // Gold
+  if (goldPrice) {
+    document.getElementById('gold-price').textContent = `$${Math.round(goldPrice).toLocaleString()}`;
+    document.getElementById('gold-price').className = 'ind-value orange';
+  }
+
+  // Months to bottom
+  const monthsSince = (new Date() - HALVINGS['2024'].date) / (86400000 * 30.44);
+  const toBottom = Math.max(0, 29 - monthsSince);
+  document.getElementById('months-to-bottom').textContent = toBottom.toFixed(1) + ' 月';
+  const bStart = new Date(HALVINGS['2024'].date.getTime() + 29 * 30.44 * 86400000);
+  const bEnd = new Date(HALVINGS['2024'].date.getTime() + 33 * 30.44 * 86400000);
+  document.getElementById('bottom-window').textContent =
+    `MVRV<1 窗口: ${bStart.getFullYear()}-${String(bStart.getMonth()+1).padStart(2,'0')} ~ ${bEnd.getFullYear()}-${String(bEnd.getMonth()+1).padStart(2,'0')}`;
+
+  // On-chain indicators from data.json
+  if (localData?.onchain) {
+    const oc = localData.onchain;
+
+    // NUPL
+    renderNUPLChart();
+    const latestNupl = oc.nupl_90d?.[oc.nupl_90d.length - 1];
+    if (latestNupl) {
+      const nv = latestNupl.value;
+      document.getElementById('nupl-now').textContent = nv.toFixed(3);
+      document.getElementById('nupl-now').className = 'ind-value ' + (nv < 0 ? 'green' : nv < 0.25 ? 'orange' : nv < 0.5 ? 'orange' : 'red');
+      document.getElementById('nupl-label').textContent = nv < 0 ? '投降区（底部）' : nv < 0.25 ? '恐惧' : nv < 0.5 ? '过渡期' : nv < 0.75 ? '牛市' : '极度贪婪';
+    }
+
+    // Exchange Flow
+    renderExFlowChart();
+    const flows = oc.exchange_flow_30d || [];
+    if (flows.length >= 7) {
+      const last7 = flows.slice(-7);
+      const avgNet = last7.reduce((s, d) => s + d.net, 0) / 7;
+      const el = document.getElementById('exflow-avg');
+      el.textContent = (avgNet > 0 ? '+' : '') + Math.round(avgNet).toLocaleString();
+      el.className = 'ind-value ' + (avgNet > 0 ? 'red' : 'green');
+      document.getElementById('exflow-label').textContent = avgNet > 0 ? '净流入 = 抛压' : '净流出 = 囤币';
+    }
+
+    // Hash Rate
+    const hr = oc.hashrate_30d || [];
+    if (hr.length >= 2) {
+      const latest = hr[hr.length - 1].value;
+      const prev = hr[0].value;
+      const trend = latest > prev ? '↑' : '↓';
+      document.getElementById('hashrate-now').textContent = latest.toFixed(0) + ' EH/s';
+      document.getElementById('hashrate-now').className = 'ind-value ' + (latest > prev ? 'green' : 'red');
+      document.getElementById('hashrate-trend').textContent = `${trend} ${((latest - prev) / prev * 100).toFixed(1)}% (30天)`;
+    }
+  }
+
+  // Funnel: read news from data.json
+  renderCycleBar();
+  const newsResult = getLocalNews();
+  layerNewsData = newsResult.layers;
+  if (newsResult.updated) {
+    const updEl = document.getElementById('news-updated');
+    if (updEl) updEl.textContent = `新闻更新: ${new Date(newsResult.updated).toLocaleString('zh-CN')}`;
+  }
+  renderFunnelUI();
+
+  // Manual inputs
+  loadManualInputs();
+
+  document.getElementById('footer').textContent =
+    `更新: ${new Date().toLocaleString('zh-CN')} · CoinMetrics + CoinGecko + Alternative.me + data.json`;
+}
+
+main().catch(e => {
+  document.getElementById('loading').textContent = '加载失败: ' + e.message;
+});
+</script>
+</body>
+</html>
